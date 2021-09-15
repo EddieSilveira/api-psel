@@ -9,7 +9,9 @@ const PORT = process.env.PORT || 4000;
 const jwt = require('jsonwebtoken');
 const tokenSecret = process.env.SECRET;
 
+const Usuario = require('./model/Usuario');
 const rotasUsuario = require('./routes/Usuario');
+const rotasUpload = require('./routes/Upload');
 
 app.use(cors());
 
@@ -48,18 +50,22 @@ function verificaJWT(req, res, next) {
 //Autenticação
 app.post('/signin', async (req, res, next) => {
   const usuarios = await Usuario.find();
+  let id = null;
+  let token = null;
   usuarios.forEach((usuario) => {
-    if (req.body.email === usuario.email && req.body.senha === usuario.senha) {
-      const id = usuario._id;
-      const token = jwt.sign({ id }, tokenSecret, {
+    if (
+      req.body.login === usuario.cpf ||
+      (req.body.login === usuario.email && req.body.senha === usuario.senha)
+    ) {
+      id = usuario._id;
+      token = jwt.sign({ id }, tokenSecret, {
         expiresIn: 999,
       });
-
-      return res.json({ auth: true, token: token, usuario: usuario });
-    } else {
-      return res.status(500).json({ message: 'Login Inválido' });
     }
   });
+
+  if (token) return res.status(200).json({ auth: true, token: token });
+  if (!token) return res.status(500).json({ message: 'Login Inválido' });
 });
 
 app.post('/signout', function (req, res) {
@@ -70,7 +76,8 @@ app.get('/', (req, res) => {
   res.json({ message: 'API online!', version: '1.0.1' });
 });
 
-app.use('/usuarios', verificaJWT, rotasUsuario);
+app.use('/usuarios', rotasUsuario);
+app.use('/upload', rotasUpload);
 
 app.use(function (req, res) {
   res.status(404).json({
