@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const cors = require('cors');
 require('dotenv').config();
 const InicializaMongoServer = require('./config/db');
@@ -13,8 +14,6 @@ const Usuario = require('./model/Usuario');
 const rotasUsuario = require('./routes/Usuario');
 const rotasUpload = require('./routes/Upload');
 
-app.use(cors());
-
 app.use(function (req, res, next) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -27,6 +26,7 @@ app.use(function (req, res, next) {
   next();
 });
 
+app.use(cors());
 app.disable('x-powered-by');
 app.use(express.json());
 
@@ -47,25 +47,68 @@ function verificaJWT(req, res, next) {
   });
 }
 
+//Cadastro
+app.post('/signup', async (req, res) => {
+  const { cpf } = req.body;
+  let usuario = await Usuario.findOne({ cpf });
+  if (usuario)
+    return res.status(200).json({
+      erro: { message: 'Já existe um usuário com o cpf informado' },
+    });
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.senha, 10);
+    const user = {
+      nome: req.body.nome,
+      cpf: req.body.cpf,
+      email: req.body.email,
+      senha: hashedPassword,
+      nivelAcesso: req.body.nivelAcesso,
+      foto: {
+        originalName: req.body.foto.originalName,
+        path: req.body.foto.path,
+        size: req.body.foto.size,
+        mimetype: req.body.foto.mimetype,
+      },
+    };
+    let usuario = new Usuario(user);
+    let id = usuario._id;
+    let token = jwt.sign({ id }, tokenSecret, {
+      expiresIn: 999,
+    });
+    await usuario.save();
+    res.status(200).json({ auth: true, token: token });
+  } catch (err) {
+    return res.status(500).json({
+      erros: [{ message: `Erro ao salvar o usuario: ${err.message}` }],
+    });
+  }
+});
+
 //Autenticação
 app.post('/signin', async (req, res, next) => {
   const usuarios = await Usuario.find();
-  let id = null;
-  let token = null;
-  usuarios.forEach((usuario) => {
-    if (
-      req.body.login === usuario.cpf ||
-      (req.body.login === usuario.email && req.body.senha === usuario.senha)
-    ) {
-      id = usuario._id;
-      token = jwt.sign({ id }, tokenSecret, {
+  const usuario = usuarios.find(
+    (usuario) =>
+      usuario.cpf === req.body.login || usuario.email === req.body.login,
+  );
+
+  if (usuario === null) {
+    return res.status(400).send('Não foi possível encontrar o usuário!');
+  }
+
+  try {
+    if (await bcrypt.compare(req.body.senha, usuario.senha)) {
+      let id = usuario._id;
+      let token = jwt.sign({ id }, tokenSecret, {
         expiresIn: 999,
       });
+      res.status(200).json({ auth: true, token: token });
+    } else {
+      res.status(500).json({ message: 'Login Inválido' });
     }
-  });
-
-  if (token) return res.status(200).json({ auth: true, token: token });
-  if (!token) return res.status(500).json({ message: 'Login Inválido' });
+  } catch {
+    res.status(500).send();
+  }
 });
 
 app.post('/signout', function (req, res) {
@@ -76,7 +119,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'API online!', version: '1.0.1' });
 });
 
-app.use('/usuarios', rotasUsuario);
+app.use('/usuarios', verificaJWT, rotasUsuario);
 app.use('/upload', rotasUpload);
 
 app.use(function (req, res) {
