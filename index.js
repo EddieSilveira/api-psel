@@ -29,14 +29,17 @@ app.use(function (req, res, next) {
 app.use(cors());
 app.disable('x-powered-by');
 app.use(express.json());
+app.use(express.static('public'));
 
 //TOKEN JWT
 function verificaJWT(req, res, next) {
   const token = req.headers['x-access-token'];
+  const tokenFormated = token;
+
   if (!token)
     return res.status(401).json({ auth: false, message: 'No token provided.' });
 
-  jwt.verify(token, tokenSecret, function (err, decoded) {
+  jwt.verify(tokenFormated, tokenSecret, function (err, decoded) {
     if (err)
       return res
         .status(500)
