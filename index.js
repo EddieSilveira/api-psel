@@ -5,14 +5,15 @@ require('dotenv').config();
 const InicializaMongoServer = require('./config/db');
 InicializaMongoServer();
 
-const app = express();
-const PORT = process.env.PORT || 4000;
-const jwt = require('jsonwebtoken');
-const tokenSecret = process.env.SECRET;
-
 const Usuario = require('./model/Usuario');
 const rotasUsuario = require('./routes/Usuario');
 const rotasUpload = require('./routes/Upload');
+
+const app = express();
+app.use(express.static('public'));
+const PORT = process.env.PORT || 4000;
+const jwt = require('jsonwebtoken');
+const tokenSecret = process.env.SECRET;
 
 app.use(function (req, res, next) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,7 +30,6 @@ app.use(function (req, res, next) {
 app.use(cors());
 app.disable('x-powered-by');
 app.use(express.json());
-app.use(express.static('public'));
 
 //TOKEN JWT
 function verificaJWT(req, res, next) {

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt');
 
 const Usuario = require('../model/Usuario');
 
@@ -8,7 +9,6 @@ router.get('/', async (req, res) => {
   try {
     const usuario = await Usuario.find();
     res.json(usuario);
-    console.log(usuario);
   } catch (err) {
     res.status(500).send({
       erros: [{ message: 'Não foi possível obter os usuários!' }],
@@ -57,6 +57,8 @@ router.delete('/:id', async (req, res) => {
 //Edita um usuário
 router.put('/', async (req, res) => {
   let dados = req.body;
+  const hashedPassword = await bcrypt.hash(req.body.senha, 10);
+  dados.senha = hashedPassword;
   await Usuario.findByIdAndUpdate(
     req.body._id,
     {
@@ -71,7 +73,7 @@ router.put('/', async (req, res) => {
       return res.status(500).send({
         erros: [
           {
-            message: `Não foi possível alterar o usuário com o id ${req.body._id}`,
+            message: `Não foi possível alterar o usuário com o id ${req.body._id}, erro${err}`,
           },
         ],
       });
