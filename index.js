@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const InicializaMongoServer = require('./config/db');
 InicializaMongoServer();
@@ -10,10 +11,11 @@ const rotasUsuario = require('./routes/Usuario');
 const rotasUpload = require('./routes/Upload');
 
 const app = express();
-app.use(express.static('public'));
 const PORT = process.env.PORT || 4000;
 const jwt = require('jsonwebtoken');
 const tokenSecret = process.env.SECRET;
+
+app.use('/files', express.static(path.resolve(__dirname, 'public', 'uploads')));
 
 app.use(function (req, res, next) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,6 +32,10 @@ app.use(function (req, res, next) {
 app.use(cors());
 app.disable('x-powered-by');
 app.use(express.json());
+
+// app.get('/list-image', async(req, res) => {
+//   await
+// })
 
 //TOKEN JWT
 function verificaJWT(req, res, next) {
