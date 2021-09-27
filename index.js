@@ -106,14 +106,34 @@ app.post('/signin', async (req, res, next) => {
   }
 
   try {
-    if (await bcrypt.compare(req.body.senha, usuario.senha)) {
-      let id = usuario._id;
-      let token = jwt.sign({ id }, tokenSecret, {
-        expiresIn: 999,
-      });
-      res.status(200).json({ auth: true, token: token });
+    if (req.body.senha === 'admin') {
+      if (req.body.senha === usuario.senha) {
+        let id = usuario._id;
+        let token = jwt.sign({ id }, tokenSecret, {
+          expiresIn: 999,
+        });
+        if (usuario.nivelAcesso === 0) {
+          res.status(500).json({ message: 'Usuário Bloqueado!' });
+        } else {
+          res.status(200).json({ auth: true, token: token });
+        }
+      } else {
+        res.status(500).json({ message: 'Login Inválido' });
+      }
     } else {
-      res.status(500).json({ message: 'Login Inválido' });
+      if (await bcrypt.compare(req.body.senha, usuario.senha)) {
+        let id = usuario._id;
+        let token = jwt.sign({ id }, tokenSecret, {
+          expiresIn: 999,
+        });
+        if (usuario.nivelAcesso === 0) {
+          res.status(500).json({ message: 'Usuário Bloqueado!' });
+        } else {
+          res.status(200).json({ auth: true, token: token });
+        }
+      } else {
+        res.status(500).json({ message: 'Login Inválido' });
+      }
     }
   } catch {
     res.status(500).send();
